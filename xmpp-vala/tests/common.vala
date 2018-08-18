@@ -4,6 +4,7 @@ int main(string[] args) {
     GLib.Test.init(ref args);
     GLib.Test.set_nonfatal_assertions();
     TestSuite.get_root().add_suite(new Xmpp.Test.StanzaTest().get_suite());
+    TestSuite.get_root().add_suite(new Xmpp.Test.ColorTest().get_suite());
     return GLib.Test.run();
 }
 
@@ -64,6 +65,14 @@ bool fail_if_not_eq_attr(StanzaAttribute left, StanzaAttribute right, string? re
 
 bool fail_if_not_eq_int(int left, int right, string? reason = null) {
     return fail_if_not(left == right, @"$(reason + ": " ?? "")$left != $right");
+}
+
+private float float_to_accuracy(float f, float accuracy) {
+    return (float) (Math.round(f * Math.pow(10, accuracy)) / Math.pow(10, accuracy));
+}
+
+bool fail_if_not_eq_float(float left, float right, float accuracy = 3, string? reason = null) {
+    return fail_if_not(float_to_accuracy(left, accuracy) == float_to_accuracy(right, accuracy), @"$(reason + ": " ?? "")$left != $right");
 }
 
 bool fail_if_not_eq_str(string? left, string? right, string? reason = null) {

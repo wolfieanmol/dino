@@ -37,6 +37,10 @@ public class Database {
         if (tables == null) error(@"Database $file_name was not initialized, call init()");
     }
 
+    internal bool had_changes() {
+        return db.changes() > 0;
+    }
+
     private void start_migration() {
         try {
             exec("BEGIN TRANSACTION");

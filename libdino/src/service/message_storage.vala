@@ -85,10 +85,17 @@ public class MessageStorage : StreamInteractionModule, Object {
         return ret;
     }
 
-    public Message? get_message_by_id(int id, Conversation conversation) {
-        init_conversation(conversation);
-        foreach (Message message in messages[conversation]) {
-            if (message.id == id) return message;
+    public Message? get_message_by_id(int id, Conversation? conversation = null) {
+        if (conversation != null) {
+            init_conversation(conversation);
+            foreach (Message message in messages[conversation]) {
+                if (message.id == id) return message;
+            }
+        }
+
+        var row = db.message.select().with(db.message.id, "=", id).single().row();
+        if (row.is_present()) {
+            return new Message.from_row(db, row.inner);
         }
         return null;
     }

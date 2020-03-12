@@ -32,7 +32,7 @@ DEPENDS
     ${CMAKE_BINARY_DIR}/exports/qlite.deps
 )
 
-add_definitions(${VALA_CFLAGS})
+add_definitions(${VALA_CFLAGS} -DG_LOG_DOMAIN="qlite")
 add_library(qlite SHARED ${QLITE_VALA_C})
 add_dependencies(qlite qlite-vapi)
 target_link_libraries(qlite ${QLITE_PACKAGES})

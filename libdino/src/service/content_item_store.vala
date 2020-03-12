@@ -239,6 +239,14 @@ public abstract class ContentItem : Object {
         this.mark = mark;
     }
 
+    public bool equals(ContentItem a) {
+        return this.id == a.id;
+    }
+
+    public static bool equals_func(ContentItem a, ContentItem b) {
+        return a.id == b.id;
+    }
+
     public static int compare(ContentItem a, ContentItem b) {
         int res = a.sort_time.compare(b.sort_time);
         if (res == 0) {

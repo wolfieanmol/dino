@@ -16,7 +16,8 @@ public class ConversationItemSkeleton : EventBox {
 
     public StreamInteractor stream_interactor;
     public Conversation conversation { get; set; }
-    public Plugins.MetaConversationItem item;
+    public Plugins.MetaConversationItem item { get; set; }
+    private ReactionsController? reactions_controller = null;
 
     private Box image_content_box = new Box(Orientation.HORIZONTAL, 8) { visible=true };
     private Box header_content_box = new Box(Orientation.VERTICAL, 0) { visible=true };
@@ -46,21 +47,6 @@ public class ConversationItemSkeleton : EventBox {
         image_content_box.add(header_content_box);
         this.add(image_content_box);
 
-        if (item.get_type().is_a(typeof(ContentMetaItem))) {
-            this.motion_notify_event.connect((event) => {
-                this.set_state_flags(StateFlags.PRELIGHT, false);
-                return false;
-            });
-            this.enter_notify_event.connect((event) => {
-                this.set_state_flags(StateFlags.PRELIGHT, false);
-                return false;
-            });
-            this.leave_notify_event.connect((event) => {
-                this.unset_state_flags(StateFlags.PRELIGHT);
-                return false;
-            });
-        }
-
         this.notify["show-skeleton"].connect(update_margin);
         this.notify["last-group-item"].connect(update_margin);
 
@@ -68,6 +54,15 @@ public class ConversationItemSkeleton : EventBox {
         this.last_group_item = true;
         update_margin();
         this.notify["show-skeleton"].connect(update_margin);
+
+        ContentMetaItem? content_meta_item = item as ContentMetaItem;
+        if (content_meta_item != null) {
+            reactions_controller = new ReactionsController(conversation, content_meta_item.content_item, stream_interactor);
+            reactions_controller.box_activated.connect((widget) => {
+                header_content_box.add(widget);
+            });
+            reactions_controller.init();
+        }
     }
 
     public void update_time() {
@@ -176,7 +171,6 @@ public class ItemMetaDataHeader : Box {
             received_image.set_from_icon_name("image-loading-symbolic", ICON_SIZE_HEADER);
         } else if (received_image.visible) {
             received_image.set_from_icon_name("image-loading-symbolic", ICON_SIZE_HEADER);
-
         }
     }
 

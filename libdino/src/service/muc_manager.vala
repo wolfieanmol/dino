@@ -19,16 +19,20 @@ public class MucManager : StreamInteractionModule, Object {
     public signal void conference_removed(Account account, Jid jid);
 
     private StreamInteractor stream_interactor;
+    private Database db;
     private HashMap<Jid, Xep.Muc.MucEnterError> enter_errors = new HashMap<Jid, Xep.Muc.MucEnterError>(Jid.hash_func, Jid.equals_func);
     private ReceivedMessageListener received_message_listener;
     private HashMap<Account, BookmarksProvider> bookmarks_provider = new HashMap<Account, BookmarksProvider>(Account.hash_func, Account.equals_func);
-    public static void start(StreamInteractor stream_interactor) {
-        MucManager m = new MucManager(stream_interactor);
+    private HashMap<Account, HashMap<Jid, string>> own_occupant_ids = new HashMap<Account, HashMap<Jid, string>>(Account.hash_func, Account.equals_func);
+
+    public static void start(StreamInteractor stream_interactor, Database db) {
+        MucManager m = new MucManager(stream_interactor, db);
         stream_interactor.add_module(m);
     }
 
-    private MucManager(StreamInteractor stream_interactor) {
+    private MucManager(StreamInteractor stream_interactor, Database db) {
         this.stream_interactor = stream_interactor;
+        this.db = db;
         this.received_message_listener = new ReceivedMessageListener(stream_interactor);
         stream_interactor.account_added.connect(on_account_added);
         stream_interactor.stream_negotiated.connect(on_stream_negotiated);
@@ -275,6 +279,13 @@ public class MucManager : StreamInteractionModule, Object {
         return get_own_jid(jid, account) != null;
     }
 
+    public string? get_own_occupant_id(Account account, Jid muc_jid) {
+        if (account in own_occupant_ids && muc_jid in own_occupant_ids[account]) {
+            return own_occupant_ids[account][muc_jid];
+        }
+        return null;
+    }
+
     private void on_account_added(Account account) {
         stream_interactor.module_manager.get_module(account, Xep.Muc.Module.IDENTITY).self_removed_from_room.connect( (stream, jid, code) => {
             left(account, jid);
@@ -292,6 +303,13 @@ public class MucManager : StreamInteractionModule, Object {
             if (is_private_room(account, room.bare_jid)) {
                 private_room_occupant_updated(account, room, occupant);
             }
+        });
+
+        stream_interactor.module_manager.get_module(account, Xep.OccupantIds.Module.IDENTITY).received_own_occupant_id.connect( (stream, jid, occupant_id) => {
+            if (!(account in own_occupant_ids)) {
+                own_occupant_ids[account] = new HashMap<Jid, string>(Jid.hash_bare_func, Jid.equals_bare_func);
+            }
+            own_occupant_ids[account][jid] = occupant_id;
         });
 
         bookmarks_provider[account] = stream_interactor.module_manager.get_module(account, Xep.Bookmarks.Module.IDENTITY);
@@ -417,18 +435,21 @@ public class MucManager : StreamInteractionModule, Object {
             if (conversation.type_ != Conversation.Type.GROUPCHAT) return false;
             XmppStream stream = stream_interactor.get_stream(conversation.account);
             if (stream == null) return false;
+
             if (Xep.DelayedDelivery.MessageFlag.get_flag(stanza) == null) {
                 Jid? real_jid = stream.get_flag(Xep.Muc.Flag.IDENTITY).get_real_jid(message.counterpart);
                 if (real_jid != null && !real_jid.equals(message.counterpart)) {
                     message.real_jid = real_jid.bare_jid;
                 }
             }
+
             Jid? own_muc_jid = stream_interactor.get_module(MucManager.IDENTITY).get_own_jid(message.counterpart.bare_jid, conversation.account);
             if (stanza.id != null && own_muc_jid != null && message.from.equals(own_muc_jid)) {
                 Entities.Message? m = stream_interactor.get_module(MessageStorage.IDENTITY).get_message_by_stanza_id(stanza.id, conversation);
                 if (m != null) {
                     // For own messages from this device (msg is a duplicate)
                     m.marked = Message.Marked.RECEIVED;
+                    m.server_id = Xep.UniqueStableStanzaIDs.get_stanza_id(stanza, m.counterpart.bare_jid);
                 }
                 // For own messages from other devices (msg is not a duplicate msg)
                 message.marked = Message.Marked.RECEIVED;

@@ -16,6 +16,7 @@ set(RESOURCE_LIST
     icons/dino-changes-prevent-symbolic.svg
     icons/dino-conversation-list-placeholder-arrow.svg
     icons/dino-double-tick-symbolic.svg
+    icons/dino-emoticon-add-symbolic.svg
     icons/dino-emoticon-symbolic.svg
     icons/dino-qr-code-symbolic.svg
     icons/dino-party-popper-symbolic.svg
@@ -136,6 +137,7 @@ SOURCES
     src/ui/conversation_content_view/conversation_view.vala
     src/ui/conversation_content_view/date_separator_populator.vala
     src/ui/conversation_content_view/file_widget.vala
+    src/ui/conversation_content_view/reactions_widget.vala
     src/ui/conversation_content_view/subscription_notification.vala
 
     src/ui/conversation_titlebar/menu_entry.vala

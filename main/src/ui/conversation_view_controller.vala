@@ -52,7 +52,9 @@ public class ConversationViewController : Object {
         // goto-end floating button
         var vadjustment = view.conversation_frame.scrolled.vadjustment;
         vadjustment.notify["value"].connect(() => {
-            view.goto_end_revealer.reveal_child = vadjustment.value <  vadjustment.upper - vadjustment.page_size;
+            bool not_at_the_end = vadjustment.value <  vadjustment.upper - vadjustment.page_size;
+            view.goto_end_revealer.reveal_child = not_at_the_end;
+            view.goto_end_revealer.visible = not_at_the_end;
         });
         view.goto_end_button.clicked.connect(() => {
             view.conversation_frame.initialize_for_conversation(conversation);

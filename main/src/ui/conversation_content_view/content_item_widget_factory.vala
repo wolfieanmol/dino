@@ -82,7 +82,11 @@ public class MessageItemWidgetGenerator : WidgetGenerator, Object {
         }
 
         label.label = markup_text;
-        return label;
+
+        Box box = new Box(Orientation.VERTICAL, 3) { visible=true };
+        box.add(label);
+
+        return box;
     }
 
     public static void update_me_style(StreamInteractor stream_interactor, Jid jid, string display_name, Account account, Label label, string action_text) {

@@ -35,7 +35,7 @@ public interface Application : GLib.Application {
         CounterpartInteractionManager.start(stream_interactor);
         BlockingManager.start(stream_interactor);
         ConversationManager.start(stream_interactor, db);
-        MucManager.start(stream_interactor);
+        MucManager.start(stream_interactor, db);
         AvatarManager.start(stream_interactor, db);
         RosterManager.start(stream_interactor, db);
         ChatInteraction.start(stream_interactor);
@@ -44,6 +44,7 @@ public interface Application : GLib.Application {
         NotificationEvents.start(stream_interactor);
         SearchProcessor.start(stream_interactor, db);
         Register.start(stream_interactor, db);
+        Reactions.start(stream_interactor, db);
 
         create_actions();
 

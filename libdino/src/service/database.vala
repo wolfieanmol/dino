@@ -7,7 +7,7 @@ using Dino.Entities;
 namespace Dino {
 
 public class Database : Qlite.Database {
-    private const int VERSION = 12;
+    private const int VERSION = 13;
 
     public class AccountTable : Table {
         public Column<int> id = new Column.Integer("id") { primary_key = true, auto_increment = true };
@@ -89,6 +89,19 @@ public class Database : Qlite.Database {
         internal RealJidTable(Database db) {
             base(db, "real_jid");
             init({message_id, real_jid});
+        }
+    }
+
+    public class OccupantIdTable : Table {
+        public Column<int> id = new Column.Integer("id") { primary_key = true };
+        public Column<int> account_id = new Column.Integer("account_id") { not_null = true };
+        public Column<string> last_nick = new Column.Text("last_nick");
+        public Column<int> jid_id = new Column.Integer("jid_id");
+        public Column<string> occupant_id = new Column.Text("occupant_id");
+
+        internal OccupantIdTable(Database db) {
+            base(db, "occupant_id");
+            init({id, account_id, last_nick, jid_id, occupant_id});
         }
     }
 
@@ -202,6 +215,21 @@ public class Database : Qlite.Database {
         }
     }
 
+    public class ReactionTable : Table {
+        public Column<int> id = new Column.Integer("id") { primary_key = true, auto_increment = true };
+        public Column<int> account_id = new Column.Integer("account_id") { not_null = true };
+        public Column<int> occupant_id = new Column.Integer("occupant_id");
+        public Column<int> content_item_id = new Column.Integer("content_item_id") { not_null = true };
+        public Column<long> time = new Column.Long("time");
+        public Column<int> jid_id = new Column.Integer("jid_id");
+        public Column<string> emojis = new Column.Text("emojis");
+
+        internal ReactionTable(Database db) {
+            base(db, "reaction");
+            init({id, account_id, occupant_id, content_item_id, time, jid_id, emojis});
+        }
+    }
+
     public class SettingsTable : Table {
         public Column<int> id = new Column.Integer("id") { primary_key = true, auto_increment = true };
         public Column<string> key = new Column.Text("key") { unique = true, not_null = true };
@@ -218,12 +246,14 @@ public class Database : Qlite.Database {
     public ContentItemTable content_item { get; private set; }
     public MessageTable message { get; private set; }
     public RealJidTable real_jid { get; private set; }
+    public OccupantIdTable occupantid { get; private set; }
     public FileTransferTable file_transfer { get; private set; }
     public ConversationTable conversation { get; private set; }
     public AvatarTable avatar { get; private set; }
     public EntityFeatureTable entity_feature { get; private set; }
     public RosterTable roster { get; private set; }
     public MamCatchupTable mam_catchup { get; private set; }
+    public ReactionTable reaction { get; private set; }
     public SettingsTable settings { get; private set; }
 
     public Map<int, Jid> jid_table_cache = new HashMap<int, Jid>();
@@ -237,14 +267,16 @@ public class Database : Qlite.Database {
         content_item = new ContentItemTable(this);
         message = new MessageTable(this);
         real_jid = new RealJidTable(this);
+        occupantid = new OccupantIdTable(this);
         file_transfer = new FileTransferTable(this);
         conversation = new ConversationTable(this);
         avatar = new AvatarTable(this);
         entity_feature = new EntityFeatureTable(this);
         roster = new RosterTable(this);
         mam_catchup = new MamCatchupTable(this);
+        reaction = new ReactionTable(this);
         settings = new SettingsTable(this);
-        init({ account, jid, content_item, message, real_jid, file_transfer, conversation, avatar, entity_feature, roster, mam_catchup, settings });
+        init({ account, jid, content_item, message, real_jid, occupantid, file_transfer, conversation, avatar, entity_feature, roster, mam_catchup, reaction, settings });
         try {
             exec("PRAGMA synchronous=0");
         } catch (Error e) { }

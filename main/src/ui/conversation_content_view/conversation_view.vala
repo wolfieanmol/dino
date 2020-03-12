@@ -1,5 +1,6 @@
 using Gee;
 using Gtk;
+using Gdk;
 using Pango;
 
 using Dino.Entities;
@@ -13,9 +14,13 @@ public class ConversationView : Box, Plugins.ConversationItemCollection, Plugins
 
     [GtkChild] public ScrolledWindow scrolled;
     [GtkChild] private Revealer notification_revealer;
+    [GtkChild] private Box message_menu_box;
     [GtkChild] private Box notifications;
     [GtkChild] private Box main;
+    [GtkChild] private EventBox main_event_box;
+    [GtkChild] private EventBox main_wrap_event_box;
     [GtkChild] private Stack stack;
+    [GtkChild] private MenuButton emoji_button;
 
     private StreamInteractor stream_interactor;
     private Gee.TreeSet<Plugins.MetaConversationItem> content_items = new Gee.TreeSet<Plugins.MetaConversationItem>(compare_meta_items);
@@ -25,6 +30,7 @@ public class ConversationView : Box, Plugins.ConversationItemCollection, Plugins
     private Gee.List<ConversationItemSkeleton> item_skeletons = new Gee.ArrayList<ConversationItemSkeleton>();
     private ContentProvider content_populator;
     private SubscriptionNotitication subscription_notification;
+    private bool enable_menu_box = false;
 
     private double? was_value;
     private double? was_upper;
@@ -35,6 +41,10 @@ public class ConversationView : Box, Plugins.ConversationItemCollection, Plugins
     private bool firstLoad = true;
     private bool at_current_content = true;
     private bool reload_messages = true;
+    Widget currently_highlighted = null;
+    ContentItem current_highlighted_item = null;
+    bool mouse_inside = false;
+    int last_y_root = -1;
 
     public ConversationView init(StreamInteractor stream_interactor) {
         this.stream_interactor = stream_interactor;
@@ -57,7 +67,104 @@ public class ConversationView : Box, Plugins.ConversationItemCollection, Plugins
             }
             return true;
         });
+
+        main_wrap_event_box.events = EventMask.ENTER_NOTIFY_MASK;
+        main_wrap_event_box.events = EventMask.LEAVE_NOTIFY_MASK;
+        main_wrap_event_box.leave_notify_event.connect(on_leave_notify_event);
+        main_wrap_event_box.enter_notify_event.connect(on_enter_notify_event);
+        main_event_box.events = EventMask.POINTER_MOTION_MASK;
+        main_event_box.motion_notify_event.connect(on_motion_notify_event);
+
+        EmojiChooser chooser = new EmojiChooser();
+        chooser.emoji_picked.connect((emoji) => {
+            if (current_highlighted_item == null) return;
+            stream_interactor.get_module(Reactions.IDENTITY).add_reaction(conversation, current_highlighted_item, emoji);
+        });
+        chooser.closed.connect(() => {
+            if (!mouse_inside) {
+                if (currently_highlighted != null) currently_highlighted.unset_state_flags(StateFlags.PRELIGHT);
+                message_menu_box.visible = false;
+            }
+        });
+        emoji_button.set_popover(chooser);
+        emoji_button.toggled.connect(() => {
+            mouse_inside = true;
+        });
+
         return this;
+    }
+
+    private bool on_enter_notify_event(Gdk.EventCrossing event) {
+        mouse_inside = true;
+        update_highlight((int)event.x_root, (int)event.y_root);
+        return false;
+    }
+
+    private bool on_leave_notify_event(Gdk.EventCrossing event) {
+        mouse_inside = false;
+        if (emoji_button.active) return false;
+        if (currently_highlighted != null) currently_highlighted.unset_state_flags(StateFlags.PRELIGHT);
+        message_menu_box.visible = false;
+        return false;
+    }
+
+    private bool on_motion_notify_event(Gdk.EventMotion event) {
+        mouse_inside = true;
+        update_highlight((int)event.x_root, (int)event.y_root);
+        return false;
+    }
+
+    private void update_highlight(int x_root, int y_root) {
+        if ((last_y_root - y_root).abs() <= 2) {
+            return;
+        }
+
+        last_y_root = y_root;
+        message_menu_box.visible = enable_menu_box;
+
+        // Get pointer location in main
+        int geometry_x, geometry_y, geometry_width, geometry_height, dest_x, dest_y;
+        Widget toplevel_widget = this.get_toplevel();
+        toplevel_widget.get_window().get_geometry(out geometry_x, out geometry_y, out geometry_width, out geometry_height);
+        toplevel_widget.translate_coordinates(main, x_root - geometry_x, y_root - geometry_y, out dest_x, out dest_y);
+
+        // Get widget under pointer
+        int h = 0;
+        bool @break = false;
+        Widget w = null;
+        main.@foreach((widget) => {
+            if (break) return;
+
+            h += widget.get_allocated_height();
+            w = widget;
+            if (h >= dest_y) {
+                @break = true;
+                return;
+            }
+        });
+
+        // Get widget coordinates in main
+        int widget_x, widget_y;
+        w.translate_coordinates(main, 0, 0, out widget_x, out widget_y);
+
+        // Get MessageItem
+        var iter = widgets.map_iterator();
+        while (iter.next()) {
+            if (iter.get_value() == w) {
+                Plugins.MetaConversationItem meta_item = iter.get_key();
+                var meta_content_item = meta_item as ContentMetaItem;
+                if (meta_content_item == null) return;
+                current_highlighted_item = meta_content_item.content_item;
+            }
+        }
+
+        // Highlight widget
+        if (currently_highlighted != null) currently_highlighted.unset_state_flags(StateFlags.PRELIGHT);
+        w.set_state_flags(StateFlags.PRELIGHT, true);
+        currently_highlighted = w;
+
+        // Move message menu
+        message_menu_box.margin_top = widget_y - 10;
     }
 
     public void initialize_for_conversation(Conversation? conversation) {
@@ -75,6 +182,8 @@ public class ConversationView : Box, Plugins.ConversationItemCollection, Plugins
         initialize_for_conversation_(conversation);
         display_latest();
         stack.set_visible_child_name("main");
+
+        enable_menu_box = stream_interactor.get_module(Reactions.IDENTITY).conversation_supports_reactions(conversation);
     }
 
     public void initialize_around_message(Conversation conversation, ContentItem content_item) {

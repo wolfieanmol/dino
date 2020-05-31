@@ -37,6 +37,7 @@ SOURCES
     src/service/entity_info.vala
     src/service/file_manager.vala
     src/service/jingle_file_transfers.vala
+    src/service/message_comparision.vala
     src/service/message_correction.vala
     src/service/message_processor.vala
     src/service/message_storage.vala
@@ -46,6 +47,7 @@ SOURCES
     src/service/presence_manager.vala
     src/service/registration.vala
     src/service/roster_manager.vala
+    src/service/rtt.vala
     src/service/search_processor.vala
     src/service/stream_interactor.vala
     src/service/util.vala

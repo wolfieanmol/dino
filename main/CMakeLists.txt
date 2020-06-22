@@ -139,6 +139,7 @@ SOURCES
     src/ui/conversation_selector/conversation_selector.vala
 
     src/ui/conversation_content_view/chat_state_populator.vala
+     src/ui/conversation_content_view/real_time_text_populator.vala
     src/ui/conversation_content_view/content_populator.vala
     src/ui/conversation_content_view/conversation_item_skeleton.vala
     src/ui/conversation_content_view/conversation_view.vala

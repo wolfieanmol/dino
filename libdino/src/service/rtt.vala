@@ -15,11 +15,13 @@ namespace Dino {
         public string id { get { return IDENTITY.id; } }
 
         public signal void start_scheduling(Message message, Conversation conversation);
+        public signal void rtt_processed(Conversation conversation, Jid jid, string rtt_message);
+        public signal void event_received(Conversation conversation, Jid jid, string event_);
   
         private HashMap<Conversation, Gee.Queue<StanzaNode>> action_elements_sent = new  HashMap<Conversation, Gee.ArrayQueue<StanzaNode>>(Conversation.hash_func, Conversation.equals_func);
         private HashMap<Conversation, int> seq = new  HashMap<Conversation, int>(Conversation.hash_func, Conversation.equals_func);
         private HashMap<Conversation, string> event = new  HashMap<Conversation, string>(Conversation.hash_func, Conversation.equals_func);
-        public HashMap<Conversation, string>? previous_message =  new  HashMap<Conversation, string>(Conversation.hash_func, Conversation.equals_func);
+        private HashMap<Conversation, string>? previous_message =  new  HashMap<Conversation, string>(Conversation.hash_func, Conversation.equals_func);
 
         private HashMap<Conversation, HashMap<Jid, Gee.Queue<StanzaNode>>> received_action_elements = new HashMap<Conversation, HashMap<Jid, Gee.ArrayQueue<StanzaNode>>>(Conversation.hash_func, Conversation.equals_func);
         private HashMap<Conversation, HashMap<Jid, string>> rtt_builder = new HashMap<Conversation, HashMap<Jid, string>>(Conversation.hash_func, Conversation.equals_func);
@@ -145,6 +147,13 @@ namespace Dino {
             if (rtt_builder.has_key(conversation) && rtt_builder[conversation].has_key(jid) && event_ == RealTimeText.Module.EVENT_NEW) {
                 rtt_builder[conversation].unset(jid);
             }
+            event_received(conversation, jid, event_);
+        }
+
+        public HashMap<Jid, string>? get_active_rtt(Conversation conversation) {
+            if (rtt_builder.has_key(conversation)) {
+                return rtt_builder[conversation];
+            }
         }
 
         public bool schedule_rtt(Conversation conversation) {
@@ -216,7 +225,8 @@ namespace Dino {
                     rtt_builder[conversation][jid] = rtt_message.str;
                 }
 
-                debug("%s", rtt_message.str);
+                debug("%s::%s", rtt_message.str, jid.to_string());
+                rtt_processed(conversation, jid, rtt_message.str);
                 //TODO(Wolfie) display on UI
 
                 return true;
